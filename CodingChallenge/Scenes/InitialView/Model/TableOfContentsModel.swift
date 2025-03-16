@@ -10,18 +10,50 @@ import Foundation
 struct TableOfContentsModel: Decodable {
     let type: String?
     let title: String?
-    let items: [Sections]
+    let items: [TableOfContentsSectionsModel]?
+
+    init(
+        type: String? = nil,
+        title: String? = nil,
+        items: [TableOfContentsSectionsModel]? = nil
+    ) {
+        self.type = type
+        self.title = title
+        self.items = items
+    }
 }
 
-struct Sections: Decodable {
+struct TableOfContentsSectionsModel: Decodable {
     let type: String?
     let title: String?
-    let items: [Pages]
+    let items: [TableOfContentsPagesModel]?
+
+    init(
+        type: String? = nil,
+        title: String? = nil,
+        items: [TableOfContentsPagesModel]? = nil
+    ) {
+        self.type = type
+        self.title = title
+        self.items = items
+    }
 }
 
-struct Pages: Decodable {
+struct TableOfContentsPagesModel: Decodable {
     let type: String?
     let title: String?
     let src: String?
-    let items: [Pages]?
+    let items: [TableOfContentsPagesModel]?
+
+    init(
+        type: String? = nil,
+        title: String? = nil,
+        src: String? = nil,
+        items: [TableOfContentsPagesModel]? = nil
+    ) {
+        self.type = type
+        self.title = title
+        self.src = src
+        self.items = items
+    }
 }

@@ -24,8 +24,10 @@ struct InitialView: View {
         Group {
             if viewModel.initialLoading {
                 initialLoadingState
-            } else {
+            } else if viewModel.contentIsNilOrEmpty() {
                 content
+            } else {
+                emptyState
             }
         }
         .onLoad {
@@ -35,24 +37,39 @@ struct InitialView: View {
         }
         .navigationTitle("Table Of contents")
     }
+}
 
-    // MARK: - Body Properties
+// MARK: - Content
 
-    private var initialLoadingState: some View {
+private extension InitialView {
+    var content: some View {
+        Text("Content")
+    }
+}
+
+// MARK: - Loading State View
+
+private extension InitialView {
+    var initialLoadingState: some View {
         ProgressView()
             .progressViewStyle(CircularProgressViewStyle())
             .scaleEffect(1.5, anchor: .center)
-
     }
+}
 
-    private var content: some View {
-        Text("Hello, world!")
+// MARK: - Empty State View
+
+private extension InitialView {
+    var emptyState: some View {
+        Text("Sorry no data :(")
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    let previewViewModel = InitialViewViewModel()
-    return InitialView(viewModel: previewViewModel)
+    NavigationView {
+        let previewViewModel = InitialViewViewModel()
+        return InitialView(viewModel: previewViewModel)
+    }
 }
