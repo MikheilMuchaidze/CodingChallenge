@@ -21,13 +21,32 @@ struct InitialView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if viewModel.initialLoading {
+                initialLoadingState
+            } else {
+                content
+            }
         }
-        .padding()
+        .onLoad {
+            Task {
+                await viewModel.fetchTableOfContents()
+            }
+        }
+        .navigationTitle("Table Of contents")
+    }
+
+    // MARK: - Body Properties
+
+    private var initialLoadingState: some View {
+        ProgressView()
+            .progressViewStyle(CircularProgressViewStyle())
+            .scaleEffect(1.5, anchor: .center)
+
+    }
+
+    private var content: some View {
+        Text("Hello, world!")
     }
 }
 

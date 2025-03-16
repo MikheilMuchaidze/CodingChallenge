@@ -9,14 +9,21 @@ import Foundation
 import Combine
 
 protocol InitialViewViewModelProtocol {
-    func fetchTableOfContents()
+    var initialLoading: Bool { get }
+
+    func fetchTableOfContents() async
 }
 
 @Observable
 final class InitialViewViewModel: InitialViewViewModelProtocol {
-    // MARK: - Private Prop
+    // MARK: - Private Properties
 
     private let networkService: NetworkServiceProtocol
+    private let tableOfContentsFetchingURL = URL(string: "https://run.mocky.io/v3/9b27a9ff-886d-42b6-9501-950e1fd1598b")
+
+    // MARK: - Published Properties
+
+    var initialLoading: Bool = true
 
     // MARK: - Init
 
@@ -26,6 +33,15 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
 
     // MARK: - Methods
 
-    func fetchTableOfContents() {
+    func fetchTableOfContents() async {
+        guard let tableOfContentsFetchingURL else { return }
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        let tableOfContentsModel: TableOfContentsModel? = try? await networkService.fetch(
+            url: tableOfContentsFetchingURL,
+            method: .get
+        )
+        Task { @MainActor in
+            initialLoading = false
+        }
     }
 }

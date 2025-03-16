@@ -11,7 +11,9 @@ import SwiftUI
 struct CodingChallengeApp: App {
     var body: some Scene {
         WindowGroup {
-            InitialViewConfigurator.configure()
+            NavigationStack {
+                InitialViewConfigurator.configure()
+            }
         }
     }
 }
