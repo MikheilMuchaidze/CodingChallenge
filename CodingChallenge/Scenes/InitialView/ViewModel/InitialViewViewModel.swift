@@ -58,20 +58,11 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
     // MARK: - Methods
 
     func fetchTableOfContents() async {
-        Task { @MainActor in
-            initialLoading = true
-        }
+        updateViewLoadingState(true)
+        if checkAndGetDataFromCacheIfAvailable() { return }
         guard let tableOfContentsFetchingURL else { return }
-        if let cachedData: TableOfContentsModel = userDefaultsManager.get(forKey: .tableOfContents) {
-            tableOfContentsModel = cachedData
-            print("Loaded from cache")
-            Task { @MainActor in
-                initialLoading = false
-            }
-            return
-        }
 
-        try? await Task.sleep(nanoseconds: 2_000_000_000) // Just visual for not fetch instantly
+        await uiDelayForTesting(for: 2.0)
         let tableOfContentsModelFromResponse: TableOfContentsModel? = try? await networkService.fetch(
             url: tableOfContentsFetchingURL,
             method: .get
@@ -81,9 +72,7 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
             print("Loaded from API")
             saveToCache(tableOfContentsModelFromResponse)
         }
-        Task { @MainActor in
-            initialLoading = false
-        }
+        updateViewLoadingState(false)
     }
 
     // If all content is empty then return true to show empty state in view
@@ -113,6 +102,20 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
 
     // MARK: - Private Methods
 
+    private func updateViewLoadingState(_ to: Bool) {
+        Task { @MainActor in
+            initialLoading = to
+        }
+    }
+
+    private func checkAndGetDataFromCacheIfAvailable() -> Bool {
+        guard let cachedData: TableOfContentsModel = userDefaultsManager.get(forKey: .tableOfContents) else { return false }
+        tableOfContentsModel = cachedData
+        print("Loaded from cache")
+        updateViewLoadingState(false)
+        return true
+    }
+
     private func saveToCache(_ data: TableOfContentsModel) {
         guard contentIsNilOrEmpty() == false else { return }
         userDefaultsManager.save(
@@ -120,5 +123,10 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
             forKey: .tableOfContents
         )
         print("Save to cache")
+    }
+
+    // Just visual for not fetch instantly
+    private func uiDelayForTesting(for seconds: Double) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000))
     }
 }
