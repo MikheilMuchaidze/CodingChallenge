@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct TableOfContentsModel: Decodable {
+struct TableOfContentsModel: Codable {
     let type: String?
     let title: String?
     let items: [TableOfContentsSectionsModel]?
@@ -23,7 +23,7 @@ struct TableOfContentsModel: Decodable {
     }
 }
 
-struct TableOfContentsSectionsModel: Decodable {
+struct TableOfContentsSectionsModel: Codable {
     let type: String?
     let title: String?
     let items: [TableOfContentsPagesModel]?
@@ -39,7 +39,7 @@ struct TableOfContentsSectionsModel: Decodable {
     }
 }
 
-struct TableOfContentsPagesModel: Decodable {
+struct TableOfContentsPagesModel: Codable {
     let type: String?
     let title: String?
     let src: String?

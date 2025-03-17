@@ -25,10 +25,39 @@ struct InitialView: View {
             if viewModel.initialLoading {
                 initialLoadingState
             } else if viewModel.contentIsNilOrEmpty() {
-                content
-            } else {
                 emptyState
+            } else {
+                content
             }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarLeading) {
+                Button {
+                    Task {
+                        await viewModel.refreshContent()
+                    }
+                } label: {
+                    Image(systemName: "arrow.trianglehead.clockwise")
+                        .symbolEffect(.rotate, options: .speed(3.0), isActive: viewModel.initialLoading)
+                }
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    viewModel.removeDataFromCache()
+                } label: {
+                    Image(systemName: "externaldrive.fill.badge.xmark")
+                }
+                .disabled(viewModel.contentIsNilOrEmpty())
+            }
+        }
+        .alert(isPresented: $viewModel.displayCacheRemovalPopup) {
+            Alert(
+                title: Text("Cache removed"),
+                message: Text("Cache removed from user defaults, please refresh"),
+                dismissButton: .default(Text("OK"), action: {
+                    viewModel.displayCacheRemovalPopup = false
+                })
+            )
         }
         .onLoad {
             Task {
@@ -43,7 +72,9 @@ struct InitialView: View {
 
 private extension InitialView {
     var content: some View {
-        Text("Content")
+        List {
+            Text("Content")
+        }
     }
 }
 
@@ -61,7 +92,7 @@ private extension InitialView {
 
 private extension InitialView {
     var emptyState: some View {
-        Text("Sorry no data :(")
+        Text("Sorry empty data :(")
     }
 }
 
