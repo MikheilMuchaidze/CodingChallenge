@@ -21,43 +21,66 @@ struct InitialView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = Self._printChanges()
         Group {
             if viewModel.initialLoading {
                 initialLoadingState
             } else if viewModel.contentIsNilOrEmpty() {
-                emptyState
+                noContent
             } else {
                 content
             }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarLeading) {
+            ToolbarItemGroup(placement: .topBarLeading) { // For refresh action
                 Button {
                     Task {
-                        await viewModel.refreshContent()
+                        await viewModel.refreshDataToolbarButtonTapped()
                     }
                 } label: {
                     Image(systemName: "arrow.trianglehead.clockwise")
                         .symbolEffect(.rotate, options: .speed(3.0), isActive: viewModel.initialLoading)
                 }
             }
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarLeading) { // For activating error mode
+                Toggle("ErrorMode", isOn: $viewModel.errorMode)
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) { // For removing cache
                 Button {
-                    viewModel.removeDataFromCache()
+                    viewModel.removeDataFromCacheToolbarButtonTapped()
                 } label: {
                     Image(systemName: "externaldrive.fill.badge.xmark")
                 }
-                .disabled(viewModel.contentIsNilOrEmpty())
+                .disabled(viewModel.isRemoveCacheButtonDisabled)
             }
         }
-        .alert(isPresented: $viewModel.displayCacheRemovalPopup) {
+        .alert(isPresented: $viewModel.displayCacheRemovalPopup) { // For handling a message from cleared cache)
             Alert(
-                title: Text("Cache removed"),
-                message: Text("Cache removed from user defaults, please refresh"),
-                dismissButton: .default(Text("OK"), action: {
-                    viewModel.displayCacheRemovalPopup = false
-                })
+                title: Text("Cache/Data removed"),
+                message: Text("Cache removed from user defaults and data from view"),
+                dismissButton: .default(Text("OK"), action: {})
             )
+        }
+        .alert( // For displaying error
+            "API Error",
+            isPresented: $viewModel.displayAPIError,
+            presenting: viewModel.apiErrorMessage
+        ) { details in
+            Button("Retry") {
+                Task {
+                    await viewModel.fetchTableOfContents()
+                }
+            }
+            if viewModel.isRemoveCacheButtonDisabled == false {
+                Button("Used cached data") {
+                    viewModel.useCachedDataDuringErrorButtonTapped()
+                }
+            }
+            Button("Cancel") {
+                viewModel.initialLoading = false
+            }
+        } message: { errorMessage in
+            Text(errorMessage)
         }
         .onLoad {
             Task {
@@ -91,8 +114,8 @@ private extension InitialView {
 // MARK: - Empty State View
 
 private extension InitialView {
-    var emptyState: some View {
-        Text("Sorry empty data :(")
+    var noContent: some View {
+        Text("Sorry no content:(")
     }
 }
 

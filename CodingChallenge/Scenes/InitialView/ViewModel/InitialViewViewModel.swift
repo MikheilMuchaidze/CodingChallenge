@@ -10,15 +10,22 @@ import Combine
 import SwiftUI
 
 protocol InitialViewViewModelProtocol {
-    var initialLoading: Bool { get }
+    var initialLoading: Bool { get set }
     var title: String? { get }
     var items: [TableOfContentsSectionsModel]? { get }
     var displayCacheRemovalPopup: Bool { get set }
+    var displayAPIError: Bool { get set }
+    var apiErrorMessage: String { get }
+    var errorMode: Bool { get set }
+
+    var isRemoveCacheButtonDisabled: Bool { get set }
 
     func fetchTableOfContents() async
     func contentIsNilOrEmpty() -> Bool
-    func removeDataFromCache()
-    func refreshContent() async
+
+    func refreshDataToolbarButtonTapped() async
+    func removeDataFromCacheToolbarButtonTapped()
+    func useCachedDataDuringErrorButtonTapped()
 }
 
 @Observable
@@ -27,13 +34,16 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
 
     private let networkService: NetworkServiceProtocol
     private let userDefaultsManager: UserDefaultsManagerProtocol
-    private let tableOfContentsFetchingURL = URL(string: "https://run.mocky.io/v3/9b27a9ff-886d-42b6-9501-950e1fd1598b")
+    private let tableOfContentsFetchingURL: URL
     private var tableOfContentsModel: TableOfContentsModel = TableOfContentsModel()
 
     // MARK: - Published Properties
-
+    
     var initialLoading = true
     var displayCacheRemovalPopup = false
+    var displayAPIError = false
+    var errorMode = false
+    var isRemoveCacheButtonDisabled = true
 
     // MARK: - Shared Properties
 
@@ -45,32 +55,43 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
         tableOfContentsModel.items
     }
 
+    @ObservationIgnored var apiErrorMessage: String = ""
+
     // MARK: - Init
 
     init(
         networkService: NetworkServiceProtocol = NetworkService(),
-        userDefaultsManager: UserDefaultsManagerProtocol = UserDefaultsManager()
+        userDefaultsManager: UserDefaultsManagerProtocol = UserDefaultsManager(),
+        tableOfContentsFetchingURL: URL = URL(string: "https://run.mocky.io/v3/9b27a9ff-886d-42b6-9501-950e1fd1598b")! // As we now it exists force unwrapping is fine
     ) {
         self.networkService = networkService
         self.userDefaultsManager = userDefaultsManager
+        self.tableOfContentsFetchingURL = tableOfContentsFetchingURL
     }
 
     // MARK: - Methods
 
     func fetchTableOfContents() async {
         updateViewLoadingState(true)
-        if checkAndGetDataFromCacheIfAvailable() { return }
-        guard let tableOfContentsFetchingURL else { return }
 
-        await uiDelayForTesting(for: 2.0)
-        let tableOfContentsModelFromResponse: TableOfContentsModel? = try? await networkService.fetch(
-            url: tableOfContentsFetchingURL,
-            method: .get
-        )
-        if let tableOfContentsModelFromResponse {
-            tableOfContentsModel = tableOfContentsModelFromResponse
-            print("Loaded from API")
-            saveToCache(tableOfContentsModelFromResponse)
+        await uiDelayForTesting(for: 1.0)
+        do {
+            if errorMode {
+                throw NetworkErrorEntity.invalidURL
+            }
+            let tableOfContentsModelFromResponse: TableOfContentsModel? = try await networkService.fetch(
+                url: tableOfContentsFetchingURL,
+                method: .get
+            )
+            if let tableOfContentsModelFromResponse {
+                tableOfContentsModel = tableOfContentsModelFromResponse
+                print("Loaded from API")
+                saveToCache(tableOfContentsModelFromResponse)
+            }
+        } catch let error as NetworkErrorEntity {
+            handleNetworkError(error)
+        } catch {
+            print("Unexpected error: \(error.localizedDescription)")
         }
         updateViewLoadingState(false)
     }
@@ -88,45 +109,90 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
         && tableOfContentsModelItems.isEmpty
     }
 
-    func removeDataFromCache() {
-        userDefaultsManager.clear()
-        print("Data removed from cache")
-        Task { @MainActor in
-            displayCacheRemovalPopup = true
-        }
-    }
-
-    func refreshContent() async {
+    func refreshDataToolbarButtonTapped() async {
         await fetchTableOfContents()
     }
 
-    // MARK: - Private Methods
+    func removeDataFromCacheToolbarButtonTapped() {
+        removeDataFromCache()
+    }
 
-    private func updateViewLoadingState(_ to: Bool) {
+    func useCachedDataDuringErrorButtonTapped() {
+        guard let cachedData: TableOfContentsModel = userDefaultsManager.get(forKey: .tableOfContents) else { return }
+        tableOfContentsModel = cachedData
+        print("Loaded from cache")
+        Task { @MainActor in
+            displayAPIError = false
+        }
+        updateViewLoadingState(false)
+    }
+}
+
+// MARK: - UI update methods
+
+private extension InitialViewViewModel {
+    // Just visual for not fetch instantly
+    func uiDelayForTesting(for seconds: Double) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }
+
+    func updateViewLoadingState(_ to: Bool) {
         Task { @MainActor in
             initialLoading = to
         }
     }
+}
 
-    private func checkAndGetDataFromCacheIfAvailable() -> Bool {
-        guard let cachedData: TableOfContentsModel = userDefaultsManager.get(forKey: .tableOfContents) else { return false }
-        tableOfContentsModel = cachedData
-        print("Loaded from cache")
-        updateViewLoadingState(false)
-        return true
+// MARK: - Error handling methods
+
+private extension InitialViewViewModel {
+    // Error Handling
+    func handleNetworkError(_ error: NetworkErrorEntity) {
+        print("❌Error mode error print")
+        apiErrorMessage = switch error {
+        case .invalidURL:
+            "Invalid URL error"
+        case .requestFailed(let error):
+            "Request failed: \(error.localizedDescription)"
+        case .invalidResponse:
+            "Invalid response from server"
+        case .decodingFailed(let error):
+            "Decoding error: \(error.localizedDescription)"
+        case .serverError(let statusCode, _):
+            "Server error with status code: \(statusCode)"
+        case .noInternet:
+            "No internetConnection"
+        case .timeout:
+            "Server timeout"
+        }
+        Task { @MainActor in
+            displayAPIError = true
+        }
     }
+}
 
-    private func saveToCache(_ data: TableOfContentsModel) {
+// MARK: - Cache handling methods
+
+private extension InitialViewViewModel {
+    func saveToCache(_ data: TableOfContentsModel) {
         guard contentIsNilOrEmpty() == false else { return }
         userDefaultsManager.save(
             data,
             forKey: .tableOfContents
         )
+        Task { @MainActor in
+            isRemoveCacheButtonDisabled = false
+        }
         print("Save to cache")
     }
 
-    // Just visual for not fetch instantly
-    private func uiDelayForTesting(for seconds: Double) async {
-        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000))
+    func removeDataFromCache() {
+        userDefaultsManager.clear()
+        print("Data removed from cache")
+        tableOfContentsModel = TableOfContentsModel()
+        Task { @MainActor in
+            displayCacheRemovalPopup = true
+            isRemoveCacheButtonDisabled = true
+        }
     }
 }

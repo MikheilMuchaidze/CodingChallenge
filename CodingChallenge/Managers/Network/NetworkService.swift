@@ -50,6 +50,7 @@ struct NetworkService: NetworkServiceProtocol {
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(T.self, from: data)
         } catch {
+            print("🛜 Network error: Decoding")
             throw NetworkErrorEntity.decodingFailed(error)
         }
     }
@@ -62,6 +63,7 @@ struct NetworkService: NetworkServiceProtocol {
     ) async throws -> Data {
         // Checking if url is not nil and throwing an error if it is
         guard let url else {
+            print("🛜 Network error: InvalidURL")
             throw NetworkErrorEntity.invalidURL
         }
 
@@ -78,6 +80,7 @@ struct NetworkService: NetworkServiceProtocol {
 
             // Check if response is a valid and throwing an error if it is not
             guard let httpResponse = response as? HTTPURLResponse else {
+                print("🛜 Network error: InvalidResponse")
                 throw NetworkErrorEntity.invalidResponse
             }
 
@@ -88,26 +91,32 @@ struct NetworkService: NetworkServiceProtocol {
             case 200...299:
                 return data
             case 401:
+                print("🛜 Network error: UnauthorizedError \(statusCode)")
                 throw NetworkErrorEntity.serverError(statusCode: statusCode, data: data)
             case 400...499:
+                print("🛜 Network error: BadRequestError \(statusCode)")
                 throw NetworkErrorEntity.serverError(statusCode: statusCode, data: data)
             case 500...599:
+                print("🛜 Network error: ServerError \(statusCode)")
                 throw NetworkErrorEntity.serverError(statusCode: statusCode, data: data)
             default:
+                print("🛜 Network error: DefaultServerError")
                 throw NetworkErrorEntity.serverError(statusCode: statusCode, data: data)
             }
-        } catch let error as NetworkErrorEntity {
-            throw error
         } catch let error as URLError {
             switch error.code {
             case .notConnectedToInternet:
+                print("🛜 Network error: Cast to NetworkErrorEntity failed, error - notConnectedToInternet")
                 throw NetworkErrorEntity.noInternet
             case .timedOut:
+                print("🛜 Network error: Cast to NetworkErrorEntity failed, error - timeout")
                 throw NetworkErrorEntity.timeout
             default:
+                print("🛜 Network error: Cast to NetworkErrorEntity failed, default error - requestFailed")
                 throw NetworkErrorEntity.requestFailed(error)
             }
         } catch {
+            print("🛜 Network error: Cast to any error object failed")
             throw NetworkErrorEntity.requestFailed(error)
         }
     }

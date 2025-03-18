@@ -10,7 +10,6 @@ import Foundation
 /// Network error types
 enum NetworkErrorEntity: Error {
     case invalidURL
-    case missingURL
     case invalidResponse
     case requestFailed(Error)
     case decodingFailed(Error)
@@ -22,8 +21,6 @@ enum NetworkErrorEntity: Error {
         switch self {
         case .invalidURL:
             "Invalid URL"
-        case .missingURL:
-            "Missing URL"
         case .requestFailed(let error):
             "Request failed: \(error.localizedDescription)"
         case .invalidResponse:
