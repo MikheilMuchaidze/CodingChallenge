@@ -21,6 +21,7 @@ struct InitialView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = Self._printChanges()
         Group {
             if viewModel.initialLoading {
                 initialLoadingState
@@ -75,9 +76,7 @@ struct InitialView: View {
                     viewModel.useCachedDataDuringErrorButtonTapped()
                 }
             }
-            Button("Cancel") {
-                viewModel.initialLoading = false
-            }
+            Button("Cancel", role: .cancel) {}
         } message: { errorMessage in
             Text(errorMessage)
         }
