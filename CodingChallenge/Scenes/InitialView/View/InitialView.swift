@@ -85,7 +85,6 @@ struct InitialView: View {
                 await viewModel.fetchTableOfContents()
             }
         }
-        .navigationTitle("Table Of contents")
     }
 }
 
@@ -94,7 +93,21 @@ struct InitialView: View {
 private extension InitialView {
     var content: some View {
         List {
-            Text("Content")
+            VStack(alignment: .leading, spacing: 16) {
+                if let title = viewModel.title {
+                    Text(title)
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .padding(.bottom, 8)
+                }
+                
+                if let items = viewModel.items {
+                    ForEach(items) { item in
+                        ContentItemView(item: item, depth: 0)
+                    }
+                }
+            }
+            .padding()
         }
     }
 }
@@ -121,7 +134,7 @@ private extension InitialView {
 
 #Preview {
     NavigationView {
-        let previewViewModel = InitialViewViewModel()
+        let previewViewModel = MockedInitialViewViewModel()
         return InitialView(viewModel: previewViewModel)
     }
 }

@@ -35,7 +35,7 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
     private let networkService: NetworkServiceProtocol
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let tableOfContentsFetchingURL: URL
-    private var tableOfContentsModel: TableOfContentsModel = TableOfContentsModel()
+    private var tableOfContentsModel: TableOfContentsModel
 
     // MARK: - Published Properties
     
@@ -60,10 +60,12 @@ final class InitialViewViewModel: InitialViewViewModelProtocol {
     // MARK: - Init
 
     init(
+        tableOfContentsModel: TableOfContentsModel = TableOfContentsModel(),
         networkService: NetworkServiceProtocol = NetworkService(),
         userDefaultsManager: UserDefaultsManagerProtocol = UserDefaultsManager(),
-        tableOfContentsFetchingURL: URL = URL(string: "https://run.mocky.io/v3/9b27a9ff-886d-42b6-9501-950e1fd1598b")! // As we now it exists force unwrapping is fine
+        tableOfContentsFetchingURL: URL = URL(string: "https://run.mocky.io/v3/d403fba7-413f-40d8-bec2-afe6ef4e201e")! // As we now it exists force unwrapping is fine
     ) {
+        self.tableOfContentsModel = tableOfContentsModel
         self.networkService = networkService
         self.userDefaultsManager = userDefaultsManager
         self.tableOfContentsFetchingURL = tableOfContentsFetchingURL
@@ -195,4 +197,55 @@ private extension InitialViewViewModel {
             isRemoveCacheButtonDisabled = true
         }
     }
+}
+
+struct MockedInitialViewViewModel: InitialViewViewModelProtocol {
+    // MARK: - Private Properties
+
+    private let networkService: NetworkServiceProtocol
+    private let userDefaultsManager: UserDefaultsManagerProtocol
+    private let tableOfContentsFetchingURL: URL
+    private var tableOfContentsModel: TableOfContentsModel
+
+    // MARK: - Published Properties
+
+    var initialLoading = false
+    var displayCacheRemovalPopup = false
+    var displayAPIError = false
+    var errorMode = false
+    var isRemoveCacheButtonDisabled = true
+
+    // MARK: - Shared Properties
+
+    @ObservationIgnored var title: String? {
+        tableOfContentsModel.title
+    }
+
+    @ObservationIgnored var items: [TableOfContentsSectionsModel]? {
+        tableOfContentsModel.items
+    }
+
+    @ObservationIgnored var apiErrorMessage: String = ""
+
+    // MARK: - Init
+
+    init(
+        tableOfContentsModel: TableOfContentsModel = .mockedTableOfContents,
+        networkService: NetworkServiceProtocol = NetworkService(),
+        userDefaultsManager: UserDefaultsManagerProtocol = UserDefaultsManager(),
+        tableOfContentsFetchingURL: URL = URL(string: "https://run.mocky.io/v3/d403fba7-413f-40d8-bec2-afe6ef4e201e")!
+    ) {
+        self.tableOfContentsModel = tableOfContentsModel
+        self.networkService = networkService
+        self.userDefaultsManager = userDefaultsManager
+        self.tableOfContentsFetchingURL = tableOfContentsFetchingURL
+    }
+
+    // MARK: - Methods
+
+    func fetchTableOfContents() async {}
+    func contentIsNilOrEmpty() -> Bool { false }
+    func refreshDataToolbarButtonTapped() async {}
+    func removeDataFromCacheToolbarButtonTapped() {}
+    func useCachedDataDuringErrorButtonTapped() {}
 }
